@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
 
-namespace QuickTimeline
+namespace QckEditor
 {
     class Program
     {
@@ -93,7 +93,7 @@ namespace QuickTimeline
             int done = 0;
             var errors = new List<string>();
 
-            ShowToast("QuickEditor", $"Processing {total} file{(total != 1 ? "s" : "")}…");
+            ShowToast("QckEditor", $"Processing {total} file{(total != 1 ? "s" : "")}…");
 
             foreach (var item in items)
             {
@@ -112,9 +112,9 @@ namespace QuickTimeline
             }
 
             if (errors.Count == 0 && done > 0)
-                ShowToast("QuickEditor [OK]", $"{done} file{(done != 1 ? "s" : "")} processed successfully.");
+                ShowToast("QckEditor [OK]", $"{done} file{(done != 1 ? "s" : "")} processed successfully.");
             else if (errors.Count > 0)
-                ShowToast("QuickEditor [ERROR]", $"{errors.Count} error(s): {errors[0]}");
+                ShowToast("QckEditor [ERROR]", $"{errors.Count} error(s): {errors[0]}");
         }
 
         static void ProcessVideo(string srcPath, double targetSpeed, string codecKey)
@@ -194,7 +194,7 @@ namespace QuickTimeline
         static void RunInstaller()
         {
             if (!IsAdmin()) { ShowMessageBox("Setup", "Run as administrator.", true); return; }
-            Console.WriteLine("QuickEditor - Setup\n-------------------");
+            Console.WriteLine("QckEditor - Setup\n-------------------");
             DownloadFFmpegIfNeeded();
             RegisterContextMenu(Process.GetCurrentProcess().MainModule!.FileName!);
             Console.WriteLine("\n[OK] Done! Close and reopen Windows Explorer folders.");
@@ -216,9 +216,9 @@ namespace QuickTimeline
             {
                 try
                 {
-                    string shellKey = $@"SystemFileAssociations\{ext}\shell\QuickTimeline";
+                    string shellKey = $@"SystemFileAssociations\{ext}\shell\QckEditor";
                     using var parent = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(shellKey)!;
-                    parent.SetValue("MUIVerb", "QuickEditor");
+                    parent.SetValue("MUIVerb", "QckEditor");
                     parent.SetValue("SubCommands", ""); 
 
                     string cmpRoot = $@"{shellKey}\shell\01_Compress";
@@ -269,7 +269,7 @@ namespace QuickTimeline
         static void UnregisterContextMenu()
         {
             foreach (var ext in SUPPORTED) {
-                try { Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree($@"SystemFileAssociations\{ext}\shell\QuickTimeline", false); } catch { }
+                try { Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree($@"SystemFileAssociations\{ext}\shell\QckEditor", false); } catch { }
             }
         }
 
@@ -294,7 +294,7 @@ namespace QuickTimeline
         {
             try
             {
-                string ps = $"[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null; $xml = New-Object Windows.Data.Xml.Dom.XmlDocument; $template = \"<toast><visual><binding template='ToastGeneric'><text>{title.Replace("'", "\"")}</text><text>{message.Replace("'", "\"")}</text></binding></visual></toast>\"; $xml.LoadXml($template); $toast = [Windows.UI.Notifications.ToastNotification]::new($xml); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(\"QuickEditor\").Show($toast);";
+                string ps = $"[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null; $xml = New-Object Windows.Data.Xml.Dom.XmlDocument; $template = \"<toast><visual><binding template='ToastGeneric'><text>{title.Replace("'", "\"")}</text><text>{message.Replace("'", "\"")}</text></binding></visual></toast>\"; $xml.LoadXml($template); $toast = [Windows.UI.Notifications.ToastNotification]::new($xml); [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(\"QckEditor\").Show($toast);";
                 Process.Start(new ProcessStartInfo { FileName = "powershell", Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{ps}\"" , WindowStyle = ProcessWindowStyle.Hidden, CreateNoWindow = true}).WaitForExit();
             } catch { }
         }

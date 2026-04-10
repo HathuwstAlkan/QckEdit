@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 
-echo QuickEditor - Build
+echo QckEditor - Build
 echo -----------------
 
 dotnet --version >nul 2>&1
@@ -21,7 +21,7 @@ echo.
 echo Building... ^(~30 seconds^)
 echo.
 
-dotnet publish QuickEditor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist
+dotnet publish QckEditor.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist
 
 if errorlevel 1 (
     echo.
@@ -34,7 +34,7 @@ if errorlevel 1 (
 echo.
 echo  ========================================
 echo   SUCCESS
-echo   dist\QuickEditor.exe is ready.
+echo   dist\QckEditor.exe is ready.
 echo.
 echo   Double-click it to install.
 echo   Distribute just that one file.

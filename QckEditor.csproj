@@ -5,8 +5,8 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
-    <AssemblyName>QuickEditor</AssemblyName>
-    <RootNamespace>QuickEditor</RootNamespace>
+    <AssemblyName>QckEditor</AssemblyName>
+    <RootNamespace>QckEditor</RootNamespace>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWindowsForms>false</UseWindowsForms>
