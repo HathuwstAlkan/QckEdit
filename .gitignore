@@ -1,0 +1,7 @@
+dist/
+bin/
+obj/
+*.user
+.vs/
+*.suo
+*.rsuser
