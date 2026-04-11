@@ -405,26 +405,31 @@ namespace QckEdit
                     using var parent = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(shellKey)!;
                     parent.SetValue("MUIVerb", "QckEdit");
                     parent.SetValue("SubCommands", ""); 
+                    parent.SetValue("MultiSelectModel", "Player");
 
                     string cmpRoot = $@"{shellKey}\shell\01_Compress";
                     using var cRoot = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(cmpRoot)!;
                     cRoot.SetValue("MUIVerb", "Compress / Transcode");
                     cRoot.SetValue("SubCommands", "");
+                    cRoot.SetValue("MultiSelectModel", "Player");
 
                     string spdRoot = $@"{shellKey}\shell\02_Speed";
                     using var sRoot = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(spdRoot)!;
                     sRoot.SetValue("MUIVerb", "Change Speed");
                     sRoot.SetValue("SubCommands", "");
+                    sRoot.SetValue("MultiSelectModel", "Player");
 
                     string comboRoot = $@"{shellKey}\shell\03_Combo";
                     using var cbRoot = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(comboRoot)!;
                     cbRoot.SetValue("MUIVerb", "Speed + Compress");
                     cbRoot.SetValue("SubCommands", "");
+                    cbRoot.SetValue("MultiSelectModel", "Player");
 
                     int idx = 1;
                     foreach (var (codec, lbl) in COMPRESSIONS) {
                         using var opt = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey($@"{cmpRoot}\shell\{idx:D2}_{codec}");
                         opt!.SetValue("MUIVerb", lbl);
+                        opt.SetValue("MultiSelectModel", "Player");
                         Microsoft.Win32.Registry.ClassesRoot.CreateSubKey($@"{cmpRoot}\shell\{idx:D2}_{codec}\command")!
                             .SetValue("", $"\"{exePath}\" --process \"%1\" --codec {codec}");
                         idx++;
@@ -434,6 +439,7 @@ namespace QckEdit
                     foreach (var (sp, lbl) in SPEEDS) {
                         using var opt = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey($@"{spdRoot}\shell\{idx:D2}_Spd");
                         opt!.SetValue("MUIVerb", lbl);
+                        opt.SetValue("MultiSelectModel", "Player");
                         Microsoft.Win32.Registry.ClassesRoot.CreateSubKey($@"{spdRoot}\shell\{idx:D2}_Spd\command")!
                             .SetValue("", $"\"{exePath}\" --process \"%1\" --speed {sp.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
                         idx++;
@@ -443,6 +449,7 @@ namespace QckEdit
                     foreach (var (sp, codec, lbl) in COMBOS) {
                         using var opt = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey($@"{comboRoot}\shell\{idx:D2}_Cb");
                         opt!.SetValue("MUIVerb", lbl);
+                        opt.SetValue("MultiSelectModel", "Player");
                         Microsoft.Win32.Registry.ClassesRoot.CreateSubKey($@"{comboRoot}\shell\{idx:D2}_Cb\command")!
                             .SetValue("", $"\"{exePath}\" --process \"%1\" --speed {sp.ToString(System.Globalization.CultureInfo.InvariantCulture)} --codec {codec}");
                         idx++;
