@@ -75,7 +75,10 @@ namespace QckEdit
                     RunUninstaller();
                     break;
                 case "--process":
-                    string file = args.Last();
+                    int pIdx = Array.IndexOf(args, "--process");
+                    if (pIdx == -1 || pIdx == args.Length - 1) return;
+                    string file = args[pIdx + 1];
+
                     string speedArg = "1.0";
                     string codecArg = "none";
                     
@@ -420,7 +423,7 @@ namespace QckEdit
 
             var descLabel = new Label
             {
-                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' will automatically add right-click options for H.265 compression and video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' will completely erase all QckEdit context menus from the registry.",
+                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' will automatically add right-click options for H.265 and FFV1 compression and video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' will completely erase all QckEdit context menus from the registry.",
                 Location = new System.Drawing.Point(20, 60),
                 Size = new System.Drawing.Size(380, 80),
                 Font = new System.Drawing.Font("Segoe UI", 9F)
