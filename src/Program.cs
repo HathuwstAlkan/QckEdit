@@ -26,6 +26,7 @@ namespace QckEdit
 
         // -- Compression presets (HEVC & FFV1) ---------------------------------
         static readonly (string Codec, string Label)[] COMPRESSIONS = {
+            ("h264_23", "H.264 Standard (Universal)"),
             ("hevc18", "H.265 Extreme Quality (CRF 18)"),
             ("hevc20", "H.265 High Quality (CRF 20)"),
             ("hevc24", "H.265 Medium Quality (CRF 24)"),
@@ -162,6 +163,13 @@ namespace QckEdit
                 codecArgs = targetSpeed == 1.0 
                   ? $"-c:v libx265 -crf {crf} -preset slow -pix_fmt yuv420p -c:a copy"
                   : $"-c:v libx265 -crf {crf} -preset slow -pix_fmt yuv420p -c:a aac -b:a 128k";
+            }
+            else if (codecKey.StartsWith("h264"))
+            {
+                // Classic widely supported H.264 format
+                codecArgs = targetSpeed == 1.0 
+                  ? $"-c:v libx264 -crf 23 -preset fast -c:a copy"
+                  : $"-c:v libx264 -crf 23 -preset fast -c:a aac -b:a 128k";
             }
             else if (codecKey == "ffv1")
             {
@@ -440,9 +448,9 @@ namespace QckEdit
 
             var descLabel = new Label
             {
-                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' will automatically add right-click options for H.265 and FFV1 compression, as well as video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' will completely erase all QckEdit context menus from the registry.",
+                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' adds fast right-click options for H.264 (Universal), H.265, and Lossless compression, as well as video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' completely erases all QckEdit menus.",
                 Location = new System.Drawing.Point(20, 60),
-                Size = new System.Drawing.Size(380, 80),
+                Size = new System.Drawing.Size(380, 100),
                 Font = new System.Drawing.Font("Segoe UI", 9F)
             };
 

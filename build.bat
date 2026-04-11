@@ -48,5 +48,12 @@ echo   dist\Uninstall.bat is generated.
 echo.
 echo   Double-click QckEdit.exe to install.
 echo  ========================================
+
+echo.
+echo Packaging into QckEdit.zip...
+if exist "dist\QckEdit.zip" del "dist\QckEdit.zip"
+powershell -Command "Compress-Archive -Path 'dist\QckEdit.exe', 'dist\Uninstall.bat' -DestinationPath 'dist\QckEdit.zip' -Force"
+echo Done! Use dist\QckEdit.zip to share the app.
+
 echo.
 pause
