@@ -31,13 +31,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo @echo off > dist\Uninstall.bat
+echo cd /d "%%~dp0" >> dist\Uninstall.bat
+echo if exist "QckEdit.exe" ( >> dist\Uninstall.bat
+echo     start "" "QckEdit.exe" --uninstall >> dist\Uninstall.bat
+echo ^) else ( >> dist\Uninstall.bat
+echo     echo Error: QckEdit.exe not found. >> dist\Uninstall.bat
+echo     pause >> dist\Uninstall.bat
+echo ^) >> dist\Uninstall.bat
+
 echo.
 echo  ========================================
 echo   SUCCESS
 echo   dist\QckEdit.exe is ready.
+echo   dist\Uninstall.bat is generated.
 echo.
-echo   Double-click it to install.
-echo   Distribute just that one file.
+echo   Double-click QckEdit.exe to install.
 echo  ========================================
 echo.
 pause

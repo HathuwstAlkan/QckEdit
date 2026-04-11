@@ -72,7 +72,10 @@ namespace QckEdit
                     RunInstaller();
                     break;
                 case "--uninstall":
-                    RunUninstaller();
+                    RunUninstaller(false);
+                    break;
+                case "--uninstall-silent":
+                    RunUninstaller(true);
                     break;
                 case "--process":
                     int pIdx = Array.IndexOf(args, "--process");
@@ -225,8 +228,19 @@ namespace QckEdit
             MessageBox.Show("QckEdit has been successfully installed!\n\nYou can now right-click video files to use it.", "QckEdit Installed", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        public static void RunUninstaller()
+        public static void RunUninstaller(bool silent = false)
         {
+            if (!silent)
+            {
+                var confirm = MessageBox.Show(
+                    "Are you sure you want to completely remove the QckEdit right-click menus from your system?", 
+                    "Uninstall QckEdit", 
+                    MessageBoxButtons.YesNo, 
+                    MessageBoxIcon.Warning);
+
+                if (confirm != DialogResult.Yes) return;
+            }
+
             if (!IsAdmin())
             {
                 try
@@ -234,7 +248,7 @@ namespace QckEdit
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = Process.GetCurrentProcess().MainModule!.FileName,
-                        Arguments = "--uninstall",
+                        Arguments = "--uninstall-silent",
                         UseShellExecute = true,
                         Verb = "runas"
                     });
@@ -452,7 +466,7 @@ namespace QckEdit
                 Font = new System.Drawing.Font("Segoe UI", 9F)
             };
             uninstallBtn.Click += (s, e) => {
-                Program.RunUninstaller();
+                Program.RunUninstaller(false);
                 this.Close();
             };
 
