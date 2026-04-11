@@ -8,6 +8,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace QckEdit
 {
@@ -54,9 +55,16 @@ namespace QckEdit
         static readonly string FFprobe  = Path.Combine(ExeDir, "ffprobe.exe");
         static readonly string QueueDir = Path.GetTempPath();
 
+        [STAThread]
         static void Main(string[] args)
         {
-            if (args.Length == 0) { RunInstaller(); return; }
+            if (args.Length == 0)
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new InstallerForm());
+                return;
+            }
 
             switch (args[0].ToLower())
             {
@@ -108,6 +116,7 @@ namespace QckEdit
                 catch (Exception ex)
                 {
                     errors.Add($"{Path.GetFileName(item.Path)}: {ex.Message}");
+                    ShowMessageBox("QckEdit Error", $"Failed to process {item.Path}\n\nError: {ex.Message}", true);
                 }
             }
 
@@ -191,22 +200,47 @@ namespace QckEdit
             if (p.ExitCode != 0 && !ignoreError) throw new Exception($"FFmpeg exited with code {p.ExitCode}");
         }
 
-        static void RunInstaller()
+        public static void RunInstaller()
         {
-            if (!IsAdmin()) { ShowMessageBox("Setup", "Run as administrator.", true); return; }
-            Console.WriteLine("QckEdit - Setup\n-------------------");
+            if (!IsAdmin())
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = Process.GetCurrentProcess().MainModule!.FileName,
+                        Arguments = "--install",
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    });
+                }
+                catch { }
+                return;
+            }
             DownloadFFmpegIfNeeded();
             RegisterContextMenu(Process.GetCurrentProcess().MainModule!.FileName!);
-            Console.WriteLine("\n[OK] Done! Close and reopen Windows Explorer folders.");
-            Console.ReadKey();
+            MessageBox.Show("QckEdit has been successfully installed!\n\nYou can now right-click video files to use it.", "QckEdit Installed", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        static void RunUninstaller()
+        public static void RunUninstaller()
         {
-            if (!IsAdmin()) { ShowMessageBox("Setup", "Run as administrator.", true); return; }
+            if (!IsAdmin())
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = Process.GetCurrentProcess().MainModule!.FileName,
+                        Arguments = "--uninstall",
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    });
+                }
+                catch { }
+                return;
+            }
             UnregisterContextMenu();
-            Console.WriteLine("[OK] Uninstalled.");
-            Console.ReadKey();
+            MessageBox.Show("QckEdit has been successfully uninstalled.", "QckEdit Uninstalled", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         static void RegisterContextMenu(string exePath)
@@ -287,7 +321,7 @@ namespace QckEdit
 
         static void ShowMessageBox(string title, string message, bool isError = false)
         {
-            Console.WriteLine(title + ": " + message);
+            MessageBox.Show(message, title, MessageBoxButtons.OK, isError ? MessageBoxIcon.Error : MessageBoxIcon.Information);
         }
 
         static void ShowToast(string title, string message)
@@ -362,6 +396,64 @@ namespace QckEdit
         static void ReleaseLock(string file)
         {
             try { File.Delete(file + ".mut"); } catch { }
+        }
+    }
+
+    public class InstallerForm : Form
+    {
+        public InstallerForm()
+        {
+            this.Text = "QckEdit Installer";
+            this.Width = 450;
+            this.Height = 250;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+
+            var titleLabel = new Label
+            {
+                Text = "Install QckEdit Context Menus",
+                Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
+                Location = new System.Drawing.Point(20, 20),
+                AutoSize = true
+            };
+
+            var descLabel = new Label
+            {
+                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' will automatically add right-click options for H.265 compression and video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' will completely erase all QckEdit context menus from the registry.",
+                Location = new System.Drawing.Point(20, 60),
+                Size = new System.Drawing.Size(380, 80),
+                Font = new System.Drawing.Font("Segoe UI", 9F)
+            };
+
+            var installBtn = new Button
+            {
+                Text = "Install",
+                Location = new System.Drawing.Point(90, 160),
+                Size = new System.Drawing.Size(100, 30),
+                Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold)
+            };
+            installBtn.Click += (s, e) => {
+                Program.RunInstaller();
+                this.Close();
+            };
+
+            var uninstallBtn = new Button
+            {
+                Text = "Uninstall",
+                Location = new System.Drawing.Point(240, 160),
+                Size = new System.Drawing.Size(100, 30),
+                Font = new System.Drawing.Font("Segoe UI", 9F)
+            };
+            uninstallBtn.Click += (s, e) => {
+                Program.RunUninstaller();
+                this.Close();
+            };
+
+            this.Controls.Add(titleLabel);
+            this.Controls.Add(descLabel);
+            this.Controls.Add(installBtn);
+            this.Controls.Add(uninstallBtn);
         }
     }
 }

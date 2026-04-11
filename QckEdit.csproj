@@ -9,7 +9,7 @@
     <RootNamespace>QckEdit</RootNamespace>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <UseWindowsForms>false</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>false</UseWPF>
   </PropertyGroup>
 </Project>
