@@ -382,9 +382,12 @@ namespace QckEdit
                 try {
                     q = System.Text.Json.JsonSerializer.Deserialize<List<QueueEntry>>(File.ReadAllText(f));
                     File.Delete(f);
+                } catch { 
+                    break;
                 } finally { ReleaseLock(f); }
                 if (q != null) ProcessBatch(q);
             }
+            Environment.Exit(0);
         }
 
         static void AcquireLock(string file)
@@ -423,7 +426,7 @@ namespace QckEdit
 
             var descLabel = new Label
             {
-                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' will automatically add right-click options for H.265 and FFV1 compression and video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' will completely erase all QckEdit context menus from the registry.",
+                Text = "QckEdit is a lightweight video processing tool.\n\nClicking 'Install' will automatically add right-click options for H.265 and FFV1 compression, as well as video speed modifications directly into Windows Explorer.\n\nClicking 'Uninstall' will completely erase all QckEdit context menus from the registry.",
                 Location = new System.Drawing.Point(20, 60),
                 Size = new System.Drawing.Size(380, 80),
                 Font = new System.Drawing.Font("Segoe UI", 9F)
