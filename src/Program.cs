@@ -26,20 +26,20 @@ namespace QckEdit
 
         // -- Compression presets (HEVC & FFV1) ---------------------------------
         static readonly (string Codec, string Label)[] COMPRESSIONS = {
-            ("h264_23", "H.264 Standard (Universal)"),
-            ("hevc18", "H.265 Extreme Quality (CRF 18)"),
-            ("hevc20", "H.265 High Quality (CRF 20)"),
-            ("hevc24", "H.265 Medium Quality (CRF 24)"),
-            ("hevc28", "H.265 Small Size (CRF 28)"),
-            ("ffv1",   "FFV1 (Lossless)")
+            ("h264_23", "H.264 Standard (~Original Size)"),
+            ("hevc18", "H.265 Extreme Quality (~30% Smaller)"),
+            ("hevc20", "H.265 High Quality (~50% Smaller)"),
+            ("hevc24", "H.265 Medium Quality (~70% Smaller)"),
+            ("hevc28", "H.265 Small Size (~85% Smaller)"),
+            ("ffv1",   "FFV1 Lossless (HUGE Backup Size)")
         };
 
         // -- Combo presets (Speed + Compression) -------------------------------
         static readonly (double Speed, string Codec, string Label)[] COMBOS = {
-            (2.0, "hevc20", "2.0x Double + H.265 (CRF20)"),
-            (4.0, "hevc24", "4.0x Timelapse + H.265 (CRF24)"),
-            (8.0, "hevc28", "8.0x Extreme + H.265 (CRF28)"),
-            (0.5, "hevc20", "0.50x Slow-Mo + H.265 (CRF20)")
+            (2.0, "hevc20", "2.0x Double + H.265 (~50% Smaller)"),
+            (4.0, "hevc24", "4.0x Timelapse + H.265 (~70% Smaller)"),
+            (8.0, "hevc28", "8.0x Extreme + H.265 (~85% Smaller)"),
+            (0.5, "hevc20", "0.50x Slow-Mo + H.265 (~50% Smaller)")
         };
 
         // -- Supported video formats -------------------------------------------
@@ -59,10 +59,11 @@ namespace QckEdit
         [STAThread]
         static void Main(string[] args)
         {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
             if (args.Length == 0)
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new InstallerForm());
                 return;
             }
@@ -92,8 +93,21 @@ namespace QckEdit
                     int cIdx = Array.IndexOf(args, "--codec");
                     if (cIdx != -1) codecArg = args[cIdx + 1];
 
-                    Enqueue(file, speedArg, codecArg);
-                    RunBatchIfFirst();
+                    try
+                    {
+                        string ext = Path.GetExtension(file).ToLower();
+                        if (SUPPORTED.Contains(ext))
+                        {
+                            double speed = double.Parse(speedArg, System.Globalization.CultureInfo.InvariantCulture);
+                            ProcessVideo(file, speed, codecArg);
+                            ShowMessageBox("QckEdit Success", $"Successfully compressed:\n{Path.GetFileName(file)}", false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowMessageBox("QckEdit Error", $"Failed to process {file}\n\nError: {ex.Message}", true);
+                    }
+                    Environment.Exit(0);
                     break;
                 default:
                     RunInstaller();
@@ -102,37 +116,6 @@ namespace QckEdit
         }
 
         // -- Core Processing Logic ---------------------------------------------
-        static void ProcessBatch(List<QueueEntry> items)
-        {
-            int total = items.Count;
-            int done = 0;
-            var errors = new List<string>();
-
-            ShowToast("QckEdit", $"Processing {total} file{(total != 1 ? "s" : "")}…");
-
-            foreach (var item in items)
-            {
-                try
-                {
-                    string ext = Path.GetExtension(item.Path).ToLower();
-                    if (!SUPPORTED.Contains(ext)) continue;
-
-                    ProcessVideo(item.Path, double.Parse(item.Speed, System.Globalization.CultureInfo.InvariantCulture), item.Codec);
-                    done++;
-                }
-                catch (Exception ex)
-                {
-                    errors.Add($"{Path.GetFileName(item.Path)}: {ex.Message}");
-                    ShowMessageBox("QckEdit Error", $"Failed to process {item.Path}\n\nError: {ex.Message}", true);
-                }
-            }
-
-            if (errors.Count == 0 && done > 0)
-                ShowToast("QckEdit [OK]", $"{done} file{(done != 1 ? "s" : "")} processed successfully.");
-            else if (errors.Count > 0)
-                ShowToast("QckEdit [ERROR]", $"{errors.Count} error(s): {errors[0]}");
-        }
-
         static void ProcessVideo(string srcPath, double targetSpeed, string codecKey)
         {
             string dir = Path.GetDirectoryName(srcPath)!;
@@ -155,36 +138,65 @@ namespace QckEdit
                 videoFilter = $"-filter_complex \"[0:v]setpts={ptsStr}*PTS[v];[0:a]{BuildAtempoChain(targetSpeed)}[a]\" -map \"[v]\" -map \"[a]\" ";
             }
             
-            string codecArgs;
+            string gpuInfo = "";
+            try {
+                var p = new Process { StartInfo = new ProcessStartInfo { FileName = "wmic", Arguments = "path win32_VideoController get name", RedirectStandardOutput = true, CreateNoWindow = true, UseShellExecute = false } };
+                p.Start(); gpuInfo = p.StandardOutput.ReadToEnd().ToLower(); p.WaitForExit();
+            } catch { }
+
+            string aac = targetSpeed == 1.0 ? "-c:a copy" : "-c:a aac -b:a 128k";
+            string aacHq = targetSpeed == 1.0 ? "-c:a copy" : "-c:a aac -b:a 256k";
+
+            string primaryCodec = "";
+            string fallbackCodec = "";
+
+            bool hasNvidia = gpuInfo.Contains("nvidia");
+            bool hasAmdDiscrete = gpuInfo.Contains("radeon rx") || (gpuInfo.Contains("amd") && !gpuInfo.Contains("graphics"));
+
             if (codecKey.StartsWith("hevc"))
             {
                 string crf = codecKey.Substring(4);
-                // Video to libx265, slow preset. Audio copied if 1x speed, otherwise re-encoded to aac.
-                codecArgs = targetSpeed == 1.0 
-                  ? $"-c:v libx265 -crf {crf} -preset slow -pix_fmt yuv420p -c:a copy"
-                  : $"-c:v libx265 -crf {crf} -preset slow -pix_fmt yuv420p -c:a aac -b:a 128k";
-            }
-            else if (codecKey.StartsWith("h264"))
-            {
-                // Classic widely supported H.264 format
-                codecArgs = targetSpeed == 1.0 
-                  ? $"-c:v libx264 -crf 23 -preset fast -c:a copy"
-                  : $"-c:v libx264 -crf 23 -preset fast -c:a aac -b:a 128k";
+                fallbackCodec = $"-c:v libx265 -crf {crf} -preset fast -pix_fmt yuv420p {aac}";
+                if (hasNvidia) primaryCodec = $"-c:v hevc_nvenc -cq {crf} -preset p6 -tune hq -pix_fmt yuv420p {aac}";
+                else if (hasAmdDiscrete) primaryCodec = $"-c:v hevc_amf -quality quality -pix_fmt yuv420p {aac}";
+                else primaryCodec = fallbackCodec; // Rely on CPU for integrated graphics instead of hardware encoding
             }
             else if (codecKey == "ffv1")
             {
-                // Lossless video codec
-                codecArgs = targetSpeed == 1.0 
-                  ? $"-c:v ffv1 -level 3 -g 1 -pix_fmt yuv420p -c:a copy"
-                  : $"-c:v ffv1 -level 3 -g 1 -pix_fmt yuv420p -c:a aac -b:a 256k";
+                primaryCodec = fallbackCodec = $"-c:v ffv1 -level 3 -g 1 -pix_fmt yuv420p {aacHq}";
             }
-            else
+            else // h264 default
             {
-                 // Speed change only. Default back to heavily compatible h264
-                 codecArgs = $"-c:v libx264 -crf 23 -preset fast -c:a aac -b:a 128k";
+                fallbackCodec = $"-c:v libx264 -crf 23 -preset fast -pix_fmt yuv420p {aac}";
+                if (hasNvidia) primaryCodec = $"-c:v h264_nvenc -cq 23 -preset p6 -tune hq -pix_fmt yuv420p {aac}";
+                else if (hasAmdDiscrete) primaryCodec = $"-c:v h264_amf -quality quality -pix_fmt yuv420p {aac}";
+                else primaryCodec = fallbackCodec; // Rely on CPU for integrated graphics instead of hardware encoding
             }
 
-            RunFFmpeg($"-i \"{srcPath}\" {videoFilter}{codecArgs} \"{outFile}\"");
+            try
+            {
+                RunFFmpeg($"-i \"{srcPath}\" {videoFilter}{primaryCodec} \"{outFile}\"", Path.GetFileName(srcPath), outFile);
+            }
+            catch (Exception exPrimary)
+            {
+                if (primaryCodec != fallbackCodec)
+                {
+                    try 
+                    {
+                        RunFFmpeg($"-i \"{srcPath}\" {videoFilter}{fallbackCodec} \"{outFile}\"", Path.GetFileName(srcPath), outFile);
+                    } 
+                    catch (Exception exFallback) 
+                    {
+                        try { if (File.Exists(outFile)) File.Delete(outFile); } catch { }
+                        throw new Exception($"Primary and Fallback encoders both failed!\nFallback Error: {exFallback.Message}");
+                    }
+                }
+                else 
+                {
+                    try { if (File.Exists(outFile)) File.Delete(outFile); } catch { }
+                    throw exPrimary;
+                }
+            }
         }
 
         static string BuildAtempoChain(double speed)
@@ -198,20 +210,114 @@ namespace QckEdit
         }
 
         // -- FFmpeg execution --------------------------------------------------
-        static void RunFFmpeg(string args, bool ignoreError = false)
+        static void RunFFmpeg(string args, string fileTitle, string outFile)
         {
             var p = new Process {
                 StartInfo = new ProcessStartInfo {
                     FileName = FFmpeg,
-                    Arguments = $"-y -hide_banner -loglevel error {args}",
+                    Arguments = $"-y -hide_banner -loglevel warning {args}",
                     WindowStyle = ProcessWindowStyle.Hidden,
                     CreateNoWindow = true,
-                    UseShellExecute = false
+                    UseShellExecute = false,
+                    RedirectStandardError = true
                 }
             };
-            p.Start();
-            p.WaitForExit();
-            if (p.ExitCode != 0 && !ignoreError) throw new Exception($"FFmpeg exited with code {p.ExitCode}");
+
+            string errLog = "";
+            bool success = true;
+            int exitCode = 0;
+            bool isCancelled = false;
+
+            using (var pForm = new Form())
+            {
+                pForm.Text = "QckEdit Processing...";
+                pForm.Size = new System.Drawing.Size(420, 150);
+                pForm.StartPosition = FormStartPosition.CenterScreen;
+                pForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                pForm.MaximizeBox = false;
+                pForm.MinimizeBox = true; // Allow user to minimize
+                pForm.ControlBox = true; // Show X on the top right
+                
+                var lbl = new Label { 
+                    Text = $"Processing Video:\n{fileTitle}", 
+                    AutoSize = true, 
+                    Location = new System.Drawing.Point(20, 15), 
+                    MaximumSize = new System.Drawing.Size(380, 40) 
+                };
+                
+                var pb = new ProgressBar { 
+                    Style = ProgressBarStyle.Marquee, 
+                    Location = new System.Drawing.Point(20, 50), 
+                    Size = new System.Drawing.Size(360, 20) 
+                };
+
+                var btnCancel = new Button {
+                    Text = "Cancel",
+                    Location = new System.Drawing.Point(280, 80),
+                    Size = new System.Drawing.Size(100, 25)
+                };
+
+                Action performCancel = () => {
+                    if (isCancelled) return;
+                    isCancelled = true;
+                    lbl.Text = "Terminating process...";
+                    btnCancel.Enabled = false;
+                    try { if (!p.HasExited) p.Kill(); } catch { }
+                };
+
+                btnCancel.Click += (s, e) => performCancel();
+                pForm.FormClosing += (s, e) => {
+                    if (!p.HasExited && !isCancelled) {
+                        e.Cancel = true; // Prevent closing instantly without cleanup
+                        performCancel();
+                    }
+                };
+
+                pForm.Controls.Add(lbl);
+                pForm.Controls.Add(pb);
+                pForm.Controls.Add(btnCancel);
+
+                pForm.Shown += (s, e) => {
+                    Application.DoEvents();
+                    try
+                    {
+                        p.Start();
+                        while (!p.HasExited)
+                        {
+                            Application.DoEvents();
+                            Thread.Sleep(50);
+                        }
+                        if (isCancelled) return; // Skip success checks if cancelled
+
+                        errLog = p.StandardError.ReadToEnd();
+                        exitCode = p.ExitCode;
+                        if (exitCode != 0) success = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!isCancelled) {
+                            success = false;
+                            errLog = ex.Message;
+                        }
+                    }
+                    finally
+                    {
+                        if (!pForm.IsDisposed) pForm.Close();
+                    }
+                };
+
+                Application.Run(pForm);
+            }
+
+            if (isCancelled)
+            {
+                Thread.Sleep(500); // Wait for file locks to drop
+                try { if (File.Exists(outFile)) File.Delete(outFile); } catch { }
+                ShowMessageBox("QckEdit", "Successfully cancelled operation", false);
+                Environment.Exit(0); // Fully kill the instance to prevent fallback logic from triggering
+            }
+
+            if (!success) throw new Exception($"FFmpeg crashed!\nExit Code: {exitCode}\n\nLast Output:\n{errLog}");
         }
 
         public static void RunInstaller()
@@ -375,55 +481,6 @@ namespace QckEdit
             var parentDir = Directory.GetParent(extractedFFmpeg)!.Parent!.FullName;
             Directory.Delete(parentDir, true);
             File.Delete(zipPath);
-        }
-
-        // -- Queue System ------------------------------------------------------
-        class QueueEntry { public string Path { get; set; } = ""; public string Speed { get; set; } = ""; public string Codec { get; set; } = ""; }
-        static void Enqueue(string filePath, string speed, string codec)
-        {
-            string qf = Path.Combine(QueueDir, $"qt_queue_{speed}_{codec}.lock");
-            AcquireLock(qf);
-            try {
-                var q = File.Exists(qf) ? System.Text.Json.JsonSerializer.Deserialize<List<QueueEntry>>(File.ReadAllText(qf)) : new List<QueueEntry>();
-                q!.Add(new QueueEntry { Path = filePath, Speed = speed, Codec = codec });
-                File.WriteAllText(qf, System.Text.Json.JsonSerializer.Serialize(q));
-            } finally { ReleaseLock(qf); }
-        }
-
-        static void RunBatchIfFirst()
-        {
-            var files = Directory.GetFiles(QueueDir, "qt_queue_*.lock").ToList();
-            if (files.Count > 1 || Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Length > 1) return;
-            Thread.Sleep(1500); 
-            while (true)
-            {
-                var f = Directory.GetFiles(QueueDir, "qt_queue_*.lock").FirstOrDefault();
-                if (f == null) break;
-                List<QueueEntry>? q = null;
-                AcquireLock(f);
-                try {
-                    q = System.Text.Json.JsonSerializer.Deserialize<List<QueueEntry>>(File.ReadAllText(f));
-                    File.Delete(f);
-                } catch { 
-                    break;
-                } finally { ReleaseLock(f); }
-                if (q != null) ProcessBatch(q);
-            }
-            Environment.Exit(0);
-        }
-
-        static void AcquireLock(string file)
-        {
-            while (true) {
-                try {
-                    using (File.Open(file + ".mut", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None)) return;
-                } catch { Thread.Sleep(100); }
-            }
-        }
-        
-        static void ReleaseLock(string file)
-        {
-            try { File.Delete(file + ".mut"); } catch { }
         }
     }
 
