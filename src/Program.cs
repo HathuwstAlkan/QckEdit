@@ -99,9 +99,27 @@ namespace QckEdit
                         if (SUPPORTED.Contains(ext))
                         {
                             double speed = double.Parse(speedArg, System.Globalization.CultureInfo.InvariantCulture);
-                            ProcessVideo(file, speed, codecArg);
-                            ShowMessageBox("QckEdit Success", $"Successfully compressed:\n{Path.GetFileName(file)}", false);
+                            
+                            // Named semaphore across OS to limit concurrent processing. Wait until 1 finishes.
+                            bool createdNew;
+                            using (var semaphore = new Semaphore(5, 5, "QckEdit_ConcurrentPool", out createdNew))
+                            {
+                                semaphore.WaitOne(); // Wait queue
+                                try
+                                {
+                                    ProcessVideo(file, speed, codecArg);
+                                    ShowMessageBox("QckEdit Success", $"Successfully compressed:\n{Path.GetFileName(file)}", false);
+                                }
+                                finally
+                                {
+                                    semaphore.Release();
+                                }
+                            }
                         }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        
                     }
                     catch (Exception ex)
                     {
@@ -179,6 +197,7 @@ namespace QckEdit
             }
             catch (Exception exPrimary)
             {
+                if (exPrimary is OperationCanceledException) throw;
                 if (primaryCodec != fallbackCodec)
                 {
                     try 
@@ -187,6 +206,7 @@ namespace QckEdit
                     } 
                     catch (Exception exFallback) 
                     {
+                        if (exFallback is OperationCanceledException) throw;
                         try { if (File.Exists(outFile)) File.Delete(outFile); } catch { }
                         throw new Exception($"Primary and Fallback encoders both failed!\nFallback Error: {exFallback.Message}");
                     }
@@ -314,7 +334,7 @@ namespace QckEdit
                 Thread.Sleep(500); // Wait for file locks to drop
                 try { if (File.Exists(outFile)) File.Delete(outFile); } catch { }
                 ShowMessageBox("QckEdit", "Successfully cancelled operation", false);
-                Environment.Exit(0); // Fully kill the instance to prevent fallback logic from triggering
+                throw new OperationCanceledException(); // Fully kill the instance to prevent fallback logic from triggering
             }
 
             if (!success) throw new Exception($"FFmpeg crashed!\nExit Code: {exitCode}\n\nLast Output:\n{errLog}");

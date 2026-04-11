@@ -12,6 +12,7 @@ Get the latest executable from the [Releases](https://github.com/HathuwstAlkan/Q
 - **Video Compression**: Re-encode natively using HEVC/H.265 (CRF 18 through 28) or FFV1 (lossless).
 - **Combined Presets**: Change speed and compress the file in one click. 
 - **Extensive Format Support**: Works with exactly these formats: `.mp4`, `.mov`, `.mkv`, `.avi`, `.wmv`, `.m4v`, `.webm`, `.flv`, `.ts`, `.mts`, `.m2ts`, `.3gp`, `.obs`, `.rec`, `.hevc`, `.h265`, `.h264`, `.f4v`, `.ogv`, `.vob`, `.asf`, `.divx`, `.rmvb`, and `.capture`.
+- **Smart Bulk Processing**: Select up to dozens of files at once! QckEdit automatically queues background jobs (capping at 5 concurrent streams max) to prevent capping out your GPU NVENC/AMF hardware limits or freezing your CPU.
 
 ## Installation
 Run `QckEdit.exe` as Administrator. The installer will:
